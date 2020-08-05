@@ -148,22 +148,6 @@ public class NodeUtils {
 		return (count * 2.0) / (set1.size() + set2.size());
 		
 		
-//		// longest common continuous sub-sequence
-//		int[][]c = new int[name1.length()+1][name2.length()+1];
-//        int maxlen = 0;
-//        for(int i = 1; i <= name1.length(); i++){
-//            for(int j = 1; j <= name2.length(); j++){
-//                if(name1.charAt(i-1) == name2.charAt(j-1)){
-//                    c[i][j] = c[i-1][j-1] + 1;
-//                    if(c[i][j] > maxlen){
-//                        maxlen = c[i][j];
-//                    }
-//                }
-//            }
-//        }
-//        
-//        double value = (maxlen * 2.0) / (name1.length() + name2.length());
-//		return value;
 	}
 	
 	public static void replaceVariable(Map<SName, Pair<String, String>> record){
@@ -505,20 +489,25 @@ public class NodeUtils {
 
 	public static boolean nodeMatchList(Node node, List<? extends Node> tarList,
 			Map<String, String> varTrans, Map<String, Type> allUsableVariables, List<Modification> modifications) {
+		// 주어진 Node와 tarList의 Node중 매치하는게 있는지 확인, 있다면 true 반환과 함께 모든 modification들을 주어진 리스트에 담는다.
 		boolean match = false;
 		for (Node child : tarList) {
 			List<Modification> tmp = new ArrayList<>();
 			if (node.match(child, varTrans, allUsableVariables, tmp)) {
+				//주어진 node와 child가 match하는지 확인
 				match = true;
 				modifications.addAll(tmp);
 			}
 		}
+		//for문이 다 돌면 modifications에는 매치하는 모든 child와의 누적 modifications가 담긴다.
 		return match;
 	}
 
 	public static List<Modification> listNodeMatching(Node currNode, Node.TYPE nodeType,
 			List<? extends Node> srcNodeList, List<? extends Node> tarNodeList, Map<String, String> varTrans,
 			Map<String, Type> allUsableVariables) {
+		// 일치하는 타입의 두 노드의 하위 statements들도 매치하는지 보는 메서드
+		//이 때 src가 buggy, tar가 similar한 애
 		List<Modification> modifications = new ArrayList<>();
 		if (srcNodeList == null || tarNodeList == null) {
 			return modifications;
@@ -528,15 +517,22 @@ public class NodeUtils {
 		for (int i = 0; i < otherLen; i++) {
 			record[i] = -1;
 		}
+		//record 초기화, tar에 맞춰진 record
 		boolean existMatchNode = false;
+
 		for (int i = 0; i < srcNodeList.size(); i++) {
+			//src에 대해 iterate
 			boolean findMatching = false;
 			for(int j = 0; j < otherLen; j++){
+				//tar에 대해 iterate
 				if(record[j] != -1){
 					continue;
 				}
 				List<Modification> tmp = new ArrayList<>();
 				if(srcNodeList.get(i).match(tarNodeList.get(j), varTrans, allUsableVariables, tmp)){
+					//src의 i와 tar의 j가 매치하는지 확인, modifications는 누적 저장
+					//매치한다면 tar에 대한 iteration은 종료, 다음 src인덱스로 넘어간다.
+					// 
 					existMatchNode = true;
 					record[j] = i;
 					findMatching = true;
@@ -544,17 +540,17 @@ public class NodeUtils {
 					break;
 				}
 			}
-//			if(!findMatching){
-//				Deletion deletion = new Deletion(currNode, i, "", nodeType);
-//				modifications.add(deletion);
-//			}
 		}
+
 		StringBuffer stringBuffer = new StringBuffer();
 		int shouldIns = 1000;
 		int insertCount = 0;
 		if(existMatchNode){
+			//두 statement 리스트 중 매칭하는게 있었다면
 			for(int i = 0; i < otherLen; i++){
+				//tar에 대한 iteration
 				if(record[i] == -1){
+					//tar의 i번째 statement와 매칭하는 statement가 src에 없었다면
 					int index = 0;
 					for(int j = i + 1; j < otherLen; j ++){
 						if (record[j] != -1) {
@@ -562,22 +558,30 @@ public class NodeUtils {
 							break;
 						}
 					}
+					// tar에서 i 이후 statement 중 src의 statement와 매칭하는게 있는지 확인해서 매칭되는 src의 statement 인덱스를 index에 넣는다.
 					if(index != -1){
+						//tar이후 statment 중 뭔가 있었다면
 						Node insert = tarNodeList.get(i);
-						if(insert instanceof ReturnStmt || insert instanceof ThrowStmt || insert instanceof BreakStmt || insert instanceof ContinueStmt){
+						if(insert instanceof ReturnStmt || insert instanceof ThrowStmt || insert instanceof BreakStmt || insert instanceof ContinueStmt){ //다 중간에 종료하는 조건들
 							if(index != srcNodeList.size() - 1){
 								continue;
 							}
 						}
+						//tar의 i번째 statement가 위의 네개 중 하나고 index가 src의 마지막 statement위치가 아니라면 continue. src가 끊어지지 않도록.
 						if(insert instanceof WhileStmt || insert instanceof ForStmt || insert instanceof DoStmt || insert instanceof VarDeclarationStmt){
 							continue;
 						}
+						//tar의 i번째 statement가 위의 네개중 하나라면 continue
 						int last = index;
 						for(; last >= 0; last --){
+							// last는 tar의 i번째 statement 이후 statement와 매칭하는 src의 statment의 index 부터 시작, 0 까지 감소한다. 
 							Node node = srcNodeList.get(last);
+							
 							if(!(node instanceof ReturnStmt) && !(node instanceof ThrowStmt) && !(node instanceof BreakStmt) && !(node instanceof ContinueStmt)){
+								//위의 네개가 아니라면
 								List<Variable> bVariables = node.getVariables();
 								List<Variable> sVariables = insert.getVariables();
+								// buggy 와 similar (source 와 target) (node와 insert)
 								boolean dependency = false;
 								for(Variable variable : sVariables){
 									if(bVariables.contains(variable)){
@@ -585,26 +589,32 @@ public class NodeUtils {
 										break;
 									}
 								}
+								// buggy에 similar의 변수가 한번이라도 사용되면 dependancy가 있음
 								if(dependency){
 									index = last - 1;
 								}
 							} else {
 								index = last - 1;
 							}
+							// 디펜던시가 있거나 위 네개중 하나라면 index(매칭하는 src의 인덱스)는 last-1(현재 블록에서 사용되는 node의 src에서의 인덱스)
+							// 즉, src에서 index보다 앞에 있는 statement중, target의 i번째 statement와 디펜던시가 있거나 위 네개 중 하나인 애가 있으면 그 인덱스로 index를 업데이트 함
 						}
 						index = index >= 0 ? index : 0;
 							
 						String tarString = insert.simplify(varTrans, allUsableVariables);
+						//tar의 i번째 statement를 src의 변수들로 simplify해본다
 						if(tarString != null){
+							//공통되는게 있다면
 							insertCount ++;
 							stringBuffer.append(tarString + "\n");
 							shouldIns = shouldIns > index ? index : shouldIns;
 							Insertion insertion = new Insertion(currNode, index, tarString, nodeType);
 							modifications.add(insertion);
-						}
+						} // 이 match를 호출한 노드의 자녀 중 index에 해당하는 위치에 tarString을 삽입
+						
 					}
 				}
-			}
+			} //여기까지가 tar에 대한 iteration이다
 		}
 		if(insertCount > 1){
 			Insertion insertion = new Insertion(currNode, shouldIns, stringBuffer.toString(), nodeType);

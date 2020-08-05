@@ -72,31 +72,40 @@ public class SwitchStmt extends Stmt {
 	
 	@Override
 	public boolean match(Node node, Map<String, String> varTrans, Map<String, Type> allUsableVariables, List<Modification> modifications) {
+		//두 Node가 match하는 지 확인하고 인자로 주어진 Modification 리스트에 Modification들을 저장, CodeBlockMatcher.match() 내부에서 호출됨
 		boolean match = false;
 		if(node instanceof SwitchStmt){
+			//주어진 Node가 나와 같은 타입인가?
 			match = true;
-			SwitchStmt other = (SwitchStmt) node;
+			SwitchStmt other = (SwitchStmt) node; //주어진 Node를 같은 타입으로 형 번환
 			modifications.addAll(NodeUtils.listNodeMatching(this, _nodeType, _statements, other._statements, varTrans, allUsableVariables));
+			// NodeUtils.listNodeMatching()을 통해 내 하위 statements와 상대의 하위 statements중 match하는 애들이 있는지 본다?
 		} else {
 			List<Node> children = node.getChildren();
 			List<Modification> tmp = new ArrayList<>();
 			if(NodeUtils.nodeMatchList(this, children, varTrans, allUsableVariables, tmp)){
+				//나 자신과 상대의 자식들 간에 match하는게 있는지 본다?
 				match = true;
 				modifications.addAll(tmp);
+				//상대의 자식들 중 매치하는 모든 자식들과의 modifications를 얻어온다.
 			}
 			
 			if(_statements != null){
+				//내 하위의 statements가 있다면
 				for(Stmt stmt : _statements){
 					tmp = new ArrayList<>();
 					if(stmt.match(node, varTrans, allUsableVariables, tmp)){
+						//주어진 node와 내 하위 statement가 매치하는지 확인
 						match = true;
 						modifications.addAll(tmp);
+						//모든 modifications 저장
 					}
 				}
 			}
 		}
 		
 		return match;
+		//다른 세부 클래스의 Node들(리턴, 심플네임)등은 match안에서 실제로 modification을 만들고 삽입한다.
 	}
 
 	@Override

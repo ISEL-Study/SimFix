@@ -101,11 +101,8 @@ public class CodeBlockMatcher {
 		
 		// match variables first
 		Map<String, String> varTrans = matchVariables(buggyBlock, similarBlock);
-		
-//		for(Entry<String, String> entry : varTrans.entrySet()){
-//			System.out.println(entry.getKey() + " : " + entry.getValue());
-//		}
-		
+		// Variable 맵을 만든다
+	
 		
 		List<Node> bNodes = buggyBlock.getParsedNode();
 		List<Node> sNodes = similarBlock.getParsedNode();
@@ -117,10 +114,14 @@ public class CodeBlockMatcher {
 			for(int j = 0; j < sNodes.size(); j++){
 				if(reverseMatch.containsKey(j)){
 					continue;
+					// j 인덱스의 similar node가 이미 다른 노드와 매칭되어있다면 건너뛴다
 				}
 				Node simNode = sNodes.get(j);
 				List<Modification> tmp = new LinkedList<>();
 				if(buggyNode.match(simNode, varTrans, allUsableVariables, tmp)){
+					//이 match는 Node->stmt->switchstmt.match(), 즉 각 Node의 하하위 클래스들에 각각 구현되어있음. match가 간순히 false만 리턴하는 경우도 있음
+					//여기서 주석은 SwitchStmt class에 달겠음. 거기로 이동하도록
+					//두 Node가 매치 하는지 파악, 매치 한다면 그 차이를 modification의 형태로 tmp에 저장
 					match.put(i, j);
 					reverseMatch.put(j, i);
 					modifications.addAll(tmp);
@@ -138,8 +139,10 @@ public class CodeBlockMatcher {
 							|| tarNode instanceof ContinueStmt || tarNode instanceof WhileStmt
 							|| tarNode instanceof ForStmt || tarNode instanceof DoStmt || tarNode instanceof VarDeclarationStmt) {
 						continue;
+						//얘네일 경우 건너뛴다
 					}
 					Map<SName, Pair<String, String>> record = NodeUtils.tryReplaceAllVariables(tarNode, varTrans, allUsableVariables);
+					// 변수들을 buggy context에 맞게 바꿔준다
 					if(record == null){
 						continue;
 					}
@@ -182,33 +185,7 @@ public class CodeBlockMatcher {
 			}
 		}
 		
-//		// delete nodes at buggy code site
-//		if(buggyBlock.getParsedNode().size() > 2){
-//			for(int i = 0; i < bNodes.size(); i++){
-//				if(!match.containsKey(i)){
-//					modifications.add(new Deletion(buggyBlock, i, null, TYPE.UNKNOWN));
-//				}
-//			}
-//		}
-		
-//		//remove duplicate modifications
-//		List<Modification> unique = new LinkedList<>();
-//		for (Modification modification : modifications) {
-//			boolean exist = false;
-//			for (Modification u : unique) {
-//				if (u.getRevisionTypeID() == modification.getRevisionTypeID()
-//						&& u.getSourceID() == modification.getSourceID()
-//						&& u.getTargetString().equals(modification.getTargetString())
-//						&& u.getSrcNode() == modification.getSrcNode()) {
-//					exist = true;
-//					break;
-//				}
-//			}
-//			if(!exist){
-//				unique.add(modification);
-//			}
-//		}
-//		modifications = unique;
+
 		
 		// revision first
 		List<Modification> revisions = new LinkedList<>();
@@ -219,11 +196,7 @@ public class CodeBlockMatcher {
 			if(modification instanceof Revision){
 				revisions.add(modification);
 			} else if(modification instanceof Insertion){
-//				if(modification.getTargetString().startsWith("if(")){
-//					finalModifications.add(modification);
-//				} else {
-					insertions.add(modification);
-//				}
+				insertions.add(modification);
 			} else {
 				deletions.add(modification);
 			}
