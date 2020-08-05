@@ -67,10 +67,13 @@ public class SimpleFilter {
 		_max_line = _buggyCode.getCurrentLine() + DELTA_LINE;
 	}
 	
+	/* 같은 프로젝트 내에서 simmilar code snippet을 수집한다 */
 	public List<Pair<CodeBlock, Double>> filter(String srcPath, double guard){
 		List<String> files = JavaFile.ergodic(srcPath, new ArrayList<String>());
 		List<Pair<CodeBlock, Double>> filtered = new ArrayList<>();
 		CollectorVisitor collectorVisitor = new CollectorVisitor();
+
+		/* 소스로 들어온 디렉토리에 있는 모든 파일을 읽어서 AST를 만든다. */
 		for(String file : files){
 			CompilationUnit unit = JavaFile.genASTFromFile(file);
 			collectorVisitor.setUnit(file, unit);
@@ -105,11 +108,9 @@ public class SimpleFilter {
 	}
 	
 	private List<Pair<CodeBlock, Double>> filter(List<Pair<CodeBlock, Double>> filtered, double guard){
-//		List<Pair<CodeBlock, Double>> filtered = new ArrayList<>();
 		int delta = Constant.MAX_BLOCK_LINE - _buggyCode.getCurrentLine();
 		delta = delta > 0 ? delta : 0;
 		guard = guard + ((0.7 - guard) * delta / Constant.MAX_BLOCK_LINE ); // 0.9
-//		System.out.println("Real guard value : " + guard);
 		Set<String> codeRec = new HashSet<>();
 		for(CodeBlock block : _candidates){
 			if(_otherStruct.size() + _condStruct.size() > 0){
@@ -118,15 +119,10 @@ public class SimpleFilter {
 				}
 			}
 			Double similarity = CodeBlockMatcher.getSimilarity(_buggyCode, block);
-//			System.out.println(block.toSrcString().toString());
 			if(similarity < guard){
-//				System.out.println("Filtered by similiraty value : " + similarity);
 				continue;
 			}
-//			similarity += CodeBlockMatcher.getRewardSimilarity(_buggyCode, block);
-//			if (codeRec.contains(block.toSrcString().toString()) || _buggyCode.hasIntersection(block)) {
-//				System.out.println("Duplicate >>>>>>>>>>>>>>>>");
-//			} else {
+
 				if(block.getCurrentLine() == 1 && _buggyCode.getCurrentLine() != 1){
 					continue;
 				}

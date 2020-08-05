@@ -64,11 +64,6 @@ public class Repair {
 		_subject = subject;
 		_failedTestCases = fLocalization.getFailedTestCases();
 		_passedTestCasesMap = new HashMap<>();
-//		try {
-//			computeMethodCoverage();
-//		} catch (IOException e) {
-//			e.printStackTrace();
-//		}
 	}
 	
 	private void computeMethodCoverage() throws IOException{
@@ -107,12 +102,14 @@ public class Repair {
 	}
 
 	public Status fix(Timer timer, String logFile, int currentTry) throws IOException{
-		String src = _subject.getHome() + _subject.getSsrc();
-		List<Pair<String, Integer>> locations = _localization.getLocations(200);
+		String src = _subject.getHome() + _subject.getSsrc(); 
+		List<Pair<String, Integer>> locations = _localization.getLocations(200); // FL에서 상위 200개의 결과를 가져와 location 리스트에 저장
 		int correct = 0;
 		Set<String> haveTryBuggySourceCode = new HashSet<>();
 		Status status = Status.FAILED;
 		Set<String> patches = new HashSet<>();
+
+		/* suspicous statement location을 하나씩 꺼낸다.  */
 		for(Pair<String, Integer> loc : locations){
 			if(timer.timeout()){
 				return Status.TIMEOUT;
@@ -124,7 +121,8 @@ public class Repair {
 			
 			String file = _subject.getHome() + _subject.getSsrc() + "/" + loc.getFirst().replace(".", "/") + ".java";
 			String binFile = _subject.getHome() + _subject.getSbin() + "/" + loc.getFirst().replace(".", "/") + ".class";
-			// get buggy code block
+			
+			/* suspicous statement 를 기준으로 code block 생성 */
 			CodeBlock buggyblock = BuggyCode.getBuggyCodeBlock(file, loc.getSecond());
 			Integer methodID = buggyblock.getWrapMethodID(); 
 			if(methodID == null){
@@ -134,27 +132,30 @@ public class Repair {
 			}
 			logMessage(logFile, loc.getFirst() + "," + loc.getSecond());
 			List<CodeBlock> buggyBlockList = new LinkedList<>();
+
+			/* buggyblock의 reduce 메서드를 호출해서 다수의 buggy block 을 다시 만들고 리스트에 저장함. 기존 buggy block 역시 저장. */
 			buggyBlockList.addAll(buggyblock.reduce());
 			buggyBlockList.add(buggyblock);
 			
+			/* 리스트에 들어가있는 buggy block 들을 하나씩 꺼낸다. */
 			for(CodeBlock oneBuggyBlock : buggyBlockList){
-				String currentBlockString = oneBuggyBlock.toSrcString().toString();
+				String currentBlockString = oneBuggyBlock.toSrcString().toString(); // currentBlockString은 코드블럭에서 insertion에 속하는 코드들과 ASTNode 타입을 나열해서 만든 문자열
 				if(currentBlockString == null || currentBlockString.length() <= 0){
 					continue;
 				}
 				if(haveTryBuggySourceCode.contains(currentBlockString)){
 					continue;
 				}
-				haveTryBuggySourceCode.add(currentBlockString);
+				haveTryBuggySourceCode.add(currentBlockString); // 이미 시도해본 코드블럭을 기억
 				_subject.restore();
-				Pair<Integer, Integer> range = oneBuggyBlock.getLineRangeInSource();
+				Pair<Integer, Integer> range = oneBuggyBlock.getLineRangeInSource(); // 코드블럭의 라인번호 기록
 				Set<String> haveTryPatches = new HashSet<>();
 				// get all variables can be used at buggy line
-				Map<String, Type> usableVars = NodeUtils.getUsableVarTypes(file, loc.getSecond());
+				Map<String, Type> usableVars = NodeUtils.getUsableVarTypes(file, loc.getSecond()); // 블럭안에서 사용된 변수를 이름과 타입으로 묶어서 맵으로 만들어 반환
 				// search candidate similar code block
 				SimpleFilter simpleFilter = new SimpleFilter(oneBuggyBlock);
 				
-				List<Pair<CodeBlock, Double>> candidates = simpleFilter.filter(src, 0.3);
+				List<Pair<CodeBlock, Double>> candidates = simpleFilter.filter(src, 0.3); // 후보가 될만 한 코드블럭들을 수집 
 				List<String> source = null;
 				try {
 					source = JavaFile.readFileToList(file);
@@ -163,22 +164,22 @@ public class Repair {
 					continue;
 				}
 				int i = 1;
-	//			Set<String> already = new HashSet<>();
 				for(Pair<CodeBlock, Double> similar : candidates){
 					// try top 100 candidates
 					if(i > 100 || timer.timeout()){
 						break;
 					}
-					
-//					System.out.println("=====================" + (i++) +"==============================");
-//					System.out.println(similar.getFirst().toSrcString().toString());
-					// compute transformation
+
+					/* modification 만들기 */
 					List<Modification> modifications = CodeBlockMatcher.match(oneBuggyBlock, similar.getFirst(), usableVars);
 					Map<String, Set<Node>> already = new HashMap<>();
+
 					// try each transformation first
 					List<Set<Integer>> list = new ArrayList<>();
 					list.addAll(consistentModification(modifications));
 					modifications = removeDuplicateModifications(modifications);
+
+					/* modification set 안에 있는 change를 안해본 것만 뽑아서 저장 */
 					for(int index = 0; index < modifications.size(); index++){
 						Modification modification = modifications.get(index);
 						String modify = modification.toString();
@@ -210,6 +211,7 @@ public class Repair {
 								modifications.get(index).apply(usableVars);
 							}
 							
+							/* 두 코드블럭이 완전히 동일하면 그냥 넘어가자 */
 							String replace = oneBuggyBlock.toSrcString().toString();
 							if(replace.equals(currentBlockString)) {
 								for(Integer index : modifySet){
@@ -217,8 +219,9 @@ public class Repair {
 								}
 								continue;
 							}
+
+							/* 해본 적이 있는 패치면 넘어가자 */
 							if(haveTryPatches.contains(replace)){
-//								System.out.println("already try ...");
 								for(Integer index : modifySet){
 									modifications.get(index).restore();
 								}
@@ -246,10 +249,9 @@ public class Repair {
 							} catch (IOException e) {
 							}
 							
-							// validate correctness of patch
+							// 테스트를 다시 돌려본다.
 							switch (validate(logFile, oneBuggyBlock)) {
 							case COMPILE_FAILED:
-//								haveTryPatches.remove(replace);
 								break;
 							case SUCCESS:
 								String correctPatch = oneBuggyBlock.toSrcString().toString().replace("\\s*|\t|\r|\n", "");
@@ -335,7 +337,7 @@ public class Repair {
 		return unique;
 	}
 	
-	
+	// 내일 이거 봐 //
 	private List<Set<Integer>> consistentModification(List<Modification> modifications){
 		List<Set<Integer>> result = new LinkedList<>();
 		String regex = "[A-Za-z_][0-9A-Za-z_.]*";
@@ -390,15 +392,7 @@ public class Repair {
 			set.add(i);
 			baseSet.add(set);
 		}
-		
-//		List<Set<Integer>> expanded = expand(incompatibleMap, baseSet, 2, 3);
-//		for(Set<Integer> set : expanded){
-//			Set<Modification> combinedModification = new HashSet<>();
-//			for(Integer integer : set){
-//				combinedModification.add(modifications.get(integer));
-//			}
-//			list.add(combinedModification);
-//		}
+
 		list.addAll(expand(incompatibleMap, baseSet, 2, 4));
 		
 		return list;
@@ -446,11 +440,10 @@ public class Repair {
 	
 	private ValidateStatus validate(String logFile, CodeBlock buggyBlock){
 		if(!Runner.compileSubject(_subject)){
-//			System.err.println("Build failed !");
 			return ValidateStatus.COMPILE_FAILED;
 		}
 		
-		// validate patch using failed test cases
+		// 실패한 테스트들을 다시 돌려봐서 통과하는지 확인
 		for(String testcase : _failedTestCases){
 			String[] testinfo = testcase.split("::");
 			if(!Runner.testSingleTest(_subject, testinfo[0], testinfo[1])){
@@ -460,6 +453,7 @@ public class Repair {
 		
 		dumpPatch(logFile, "Pass Single Test", "", new Pair<Integer, Integer>(0, 0), buggyBlock.toSrcString().toString());
 		
+		// 전체 테스트케이스를 다시 돌려보고 통과하는지 확인
 		if(!Runner.runTestSuite(_subject)){
 			return ValidateStatus.TEST_FAILED;
 		}
