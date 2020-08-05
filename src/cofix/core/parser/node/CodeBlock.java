@@ -317,8 +317,10 @@ public class CodeBlock extends Node{
 			parseNode();
 		}
 		StringBuffer stringBuffer = new StringBuffer();
+		/* 코드블럭이 가지고 있는 노드의 갯수를 기준으로 반복 */
 		for(int i = 0; i < _parsedNodes.size(); i++){
-			Node node = _parsedNodes.get(i);
+			Node node = _parsedNodes.get(i); // 리스트에 있는 노드 순서대로 뽑기 
+			/* insertion에 들어있는 코드들만 개행으로 묶어서 반환 */
 			if(_insertions.containsKey(i)){
 				for(String string : _insertions.get(i)){
 					stringBuffer.append(string);
@@ -327,6 +329,8 @@ public class CodeBlock extends Node{
 			} else if(_deletions.contains(i)){
 				continue;
 			}
+
+			/* process 되지 않은 기존 AST노드도 문자열로 추가해준다. */
 			stringBuffer.append(node.toSrcString());
 			stringBuffer.append("\n");
 		}
