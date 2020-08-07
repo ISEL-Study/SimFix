@@ -179,8 +179,8 @@ public class Repair {
 
 					// try each transformation first
 					List<Set<Integer>> list = new ArrayList<>();
-					list.addAll(consistentModification(modifications));
-					modifications = removeDuplicateModifications(modifications);
+					list.addAll(consistentModification(modifications)); // consistent modification을 앞에 두려고 이걸 먼저 추가함
+					modifications = removeDuplicateModifications(modifications); // 완전히 중복되는 modification 제거
 
 					/* modification set 안에 있는 change를 안해본 것만 뽑아서 저장 */
 					for(int index = 0; index < modifications.size(); index++){ //각 modification 하나씩 뽑아서
@@ -205,7 +205,7 @@ public class Repair {
 					
 					List<Modification> legalModifications = new ArrayList<>();
 					while(true){
-						for(Set<Integer> modifySet : list){
+						for(Set<Integer> modifySet : list){ // list 에는 modify할 index가 들어가있음
 							if(timer.timeout()){
 								return Status.TIMEOUT;
 							}
@@ -340,20 +340,20 @@ public class Repair {
 		return unique;
 	}
 	
-	// 내일 이거 봐 //
 	private List<Set<Integer>> consistentModification(List<Modification> modifications){
 		List<Set<Integer>> result = new LinkedList<>();
-		String regex = "[A-Za-z_][0-9A-Za-z_.]*";
+		String regex = "[A-Za-z_][0-9A-Za-z_.]*"; // identifier 패턴
 		Pattern pattern = Pattern.compile(regex);
+		
 		for(int i = 0; i < modifications.size(); i++){
 			Modification modification = modifications.get(i);
 			if(modification instanceof Revision){
 				Set<Integer> consistant = new HashSet<>();
 				consistant.add(i);
-				for(int j = i + 1; j < modifications.size(); j++){
+				for(int j = i + 1; j < modifications.size(); j++){ // 자기자신 외에 다른 modification 들을 확인해본다.
 					Modification other = modifications.get(j);
 					if(other instanceof Revision){
-						if(modification.compatible(other) && modification.getTargetString().equals(other.getTargetString())){
+						if(modification.compatible(other) && modification.getTargetString().equals(other.getTargetString())){ // 다른 위치에서 같은 Modification이 있었다면 consistent modification
 							ASTNode node = JavaFile.genASTFromSource(modification.getTargetString(), ASTParser.K_EXPRESSION);
 							if(node instanceof Name || node instanceof FieldAccess || pattern.matcher(modification.getTargetString()).matches()){
 								consistant.add(j);
@@ -460,7 +460,6 @@ public class Repair {
 		if(!Runner.runTestSuite(_subject)){
 			return ValidateStatus.TEST_FAILED;
 		}
-		
 		return ValidateStatus.SUCCESS;
 	}
 	
