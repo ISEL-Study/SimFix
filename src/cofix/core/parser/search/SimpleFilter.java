@@ -195,7 +195,7 @@ public class SimpleFilter {
 			Type type = ProjectInfo.getVariableType(classAndMethodName.getFirst(), classAndMethodName.getSecond(), name);
 			//class 이름과 method 이름, node의 fullyqualified 이름을 가지고 Type을 생성
 			Variable variable = new Variable(null, name, type);
-			//node의 fullyqualified name과 type으로 Variable 객체를 생성하는데 얘는 뉴사도 메트릭을 위한 애임
+			//node의 fullyqualified name과 type으로 Variable 객체를 생성하는데 얘는 유사도 메트릭을 위한 애임
 			boolean match = false;
 			if(_variables.contains(variable) || _methods.contains(name) || sameStructure(node)){
 				match = true;
@@ -217,11 +217,13 @@ public class SimpleFilter {
 				while(parent != null && !(parent instanceof MethodDeclaration)){ // 메소드 선언 단위의 parent까지 타고 올라간다
 					parent = parent.getParent();
 					if(statement == null && parent instanceof Statement){
-						statement = (Statement) parent;
+						statement = (Statement) parent; //해당 MethodDeclaration안에서 가장 먼저 나오는 statment인 parent를 저장
 					}
 				}
 				// filter out anonymous classes
 				if(parent != null && !(parent.getParent() instanceof AnonymousClassDeclaration)){
+					//parent가 root(null)도 아니었고 anonymous class Declaration도 아니라면
+					// 즉 일반적인 경우에는, 
 					int line = _unit.getLineNumber(node.getStartPosition());
 					CodeSearch codeSearch = new CodeSearch(_unit, line, _buggyCode.getCurrentLine(), statement);
 					CodeBlock codeBlock = new CodeBlock(_fileName, _unit, codeSearch.getASTNodes());

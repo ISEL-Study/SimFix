@@ -158,7 +158,7 @@ public class Repair {
 				List<Pair<CodeBlock, Double>> candidates = simpleFilter.filter(src, 0.3); // 후보가 될만 한 코드블럭들을 수집
 				
 
-				
+
 				List<String> source = null;
 				try {
 					source = JavaFile.readFileToList(file);
@@ -178,29 +178,29 @@ public class Repair {
 					Map<String, Set<Node>> already = new HashMap<>();
 
 					// try each transformation first
-					List<Set<Integer>> list = new ArrayList<>();
+					List<Set<Integer>> list = new ArrayList<>(); //list는 modification의 index의 set의 리스트
 					list.addAll(consistentModification(modifications)); // consistent modification을 앞에 두려고 이걸 먼저 추가함
 					modifications = removeDuplicateModifications(modifications); // 완전히 중복되는 modification 제거
 
-					/* modification set 안에 있는 change를 안해본 것만 뽑아서 저장 */
+					/* modification중에서 buggy node type까지 같고 이름만 다른 애들은 빼고 already에 넣기 */
 					for(int index = 0; index < modifications.size(); index++){ //각 modification 하나씩 뽑아서
 						Modification modification = modifications.get(index);
 						String modify = modification.toString(); // ex) "[INS | " +_nodeType + " | " + _sourceID + "]" + _target
 						Set<Node> tested = already.get(modify); //tested는 이미 시도해본 <modify (string), Set<Node> >중 Set<Node>이다. 	//근데 중복 modification은 이미 다 제거되었을 텐데 어떻게 처음 뽑힌 modification의 정보가 already에 존재할 수 있지?
-						if(tested != null){
+						if(tested != null){ //이전 iteration에서 이미 같은 node type에 대한 같은 Modification을 already에 넣었다면
 							if(tested.contains(modification.getSrcNode())){
 								continue;
 							} else {
 								tested.add(modification.getSrcNode());
 							}
-						} else {
+						} else { //처음 보는 modification이면 (buggy node type이 다른) already에 넣는다
 							tested = new HashSet<>();
 							tested.add(modification.getSrcNode());
 							already.put(modify, tested);
 						}
 						Set<Integer> set = new HashSet<>();
 						set.add(index);
-						list.add(set);
+						list.add(set); //현재 index를 하나의 set으로 만들어서 list에 넣는다
 					}
 					
 					List<Modification> legalModifications = new ArrayList<>();
