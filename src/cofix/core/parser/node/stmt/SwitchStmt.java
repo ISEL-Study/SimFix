@@ -42,6 +42,7 @@ public class SwitchStmt extends Stmt {
 	
 	private String _expression_replace = null;
 	private String _statements_replace = null;
+	//둘의 차이가 뭔지 확인 필요
 	
 	private int EXPID = 1000;
 	
@@ -110,13 +111,18 @@ public class SwitchStmt extends Stmt {
 
 	@Override
 	public boolean adapt(Modification modification) {
+		// 특정 Modification.apply()를 호출하면 내부적으로 _node.adapt(this)를 한다.
 		if(modification.getSourceID() == EXPID){
+			//sourceID 가 너무 커서 1000이 들어가 있었다면
 			_expression_replace = modification.getTargetString();
-		} else if(modification instanceof Deletion){
+		}
+		else if(modification instanceof Deletion){
+			// Deletion의 경우
 			int index = modification.getSourceID();
 			if(index > _statements.size()){
 				return false;
 			}
+			//삽입되어야 할 위치가 invalid하면 실패
 			StringBuffer stringBuffer = new StringBuffer();
 			for(int i = 0; i < _statements.size(); i++){
 				if(i == index){
@@ -124,9 +130,13 @@ public class SwitchStmt extends Stmt {
 				}
 				stringBuffer.append(_statements.get(i).toSrcString());
 				stringBuffer.append("\n");
+				
 			}
 			_statements_replace = stringBuffer.toString();
-		} else if(modification instanceof Insertion){
+			//sourceID 전 인덱스까지 _statements에 있는 stmt들을 하나로 합쳐서 _statements_replace에 넣어준다.
+		}
+		else if(modification instanceof Insertion){
+			//Insertion의 경우
 			int index = modification.getSourceID();
 			if(index > _statements.size()){
 				return false;
@@ -136,13 +146,16 @@ public class SwitchStmt extends Stmt {
 				if(i == index){
 					stringBuffer.append(modification.getTargetString());
 					stringBuffer.append("\n");
+					
 				}
 				stringBuffer.append(_statements.get(i).toSrcString());
 				stringBuffer.append("\n");
 			}
 			_statements_replace = stringBuffer.toString();
+			//sourceID 전 인덱스까지의 stmt들과 modification안에 들어있는 targetString을 하나로 합쳐서 _statements_replace에 넣어준다.
 		}
 		return false;
+		//결국엔 잘 해도 false리턴 하는데 이유가 뭔지 확인 필요
 	}
 
 	@Override

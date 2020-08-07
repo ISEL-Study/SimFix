@@ -28,6 +28,7 @@ public abstract class Modification {
 	protected int _type = 0;
 
 	public Modification(Node node, int srcId, String target, TYPE changeNodeType, int typeID){
+		//sourceID는 node의 child sequence중에서 target이 삽입될 위치의 인덱스
 		_node = node;
 		_sourceID = srcId;
 		_target = target;

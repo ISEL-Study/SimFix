@@ -139,7 +139,7 @@ public class Repair {
 			
 			/* 리스트에 들어가있는 buggy block 들을 하나씩 꺼낸다. */
 			for(CodeBlock oneBuggyBlock : buggyBlockList){
-				String currentBlockString = oneBuggyBlock.toSrcString().toString(); // currentBlockString은 코드블럭에서 insertion에 속하는 코드들과 ASTNode 타입을 나열해서 만든 문자열
+				String currentBlockString = oneBuggyBlock.toSrcString().toString(); // currentBlockString은 코드블럭에서 insertion에 속하는 코드들과 ASTNode 타입을 나열해서 만든 문자열 // 어떻게 벌써 Insertion이 잇을 수 있지?
 				if(currentBlockString == null || currentBlockString.length() <= 0){
 					continue;
 				}
@@ -155,7 +155,10 @@ public class Repair {
 				// search candidate similar code block
 				SimpleFilter simpleFilter = new SimpleFilter(oneBuggyBlock);
 				
-				List<Pair<CodeBlock, Double>> candidates = simpleFilter.filter(src, 0.3); // 후보가 될만 한 코드블럭들을 수집 
+				List<Pair<CodeBlock, Double>> candidates = simpleFilter.filter(src, 0.3); // 후보가 될만 한 코드블럭들을 수집
+				
+
+				
 				List<String> source = null;
 				try {
 					source = JavaFile.readFileToList(file);
@@ -180,10 +183,10 @@ public class Repair {
 					modifications = removeDuplicateModifications(modifications);
 
 					/* modification set 안에 있는 change를 안해본 것만 뽑아서 저장 */
-					for(int index = 0; index < modifications.size(); index++){
+					for(int index = 0; index < modifications.size(); index++){ //각 modification 하나씩 뽑아서
 						Modification modification = modifications.get(index);
-						String modify = modification.toString();
-						Set<Node> tested = already.get(modify);
+						String modify = modification.toString(); // ex) "[INS | " +_nodeType + " | " + _sourceID + "]" + _target
+						Set<Node> tested = already.get(modify); //tested는 이미 시도해본 <modify (string), Set<Node> >중 Set<Node>이다. 	//근데 중복 modification은 이미 다 제거되었을 텐데 어떻게 처음 뽑힌 modification의 정보가 already에 존재할 수 있지?
 						if(tested != null){
 							if(tested.contains(modification.getSrcNode())){
 								continue;
