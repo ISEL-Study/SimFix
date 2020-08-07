@@ -78,6 +78,7 @@ public class SimpleFilter {
 			CompilationUnit unit = JavaFile.genASTFromFile(file);
 			collectorVisitor.setUnit(file, unit);
 			unit.accept(collectorVisitor);
+			// accept안에서 override된 visit 메소드가 _cadidates에 블록을 새로 만들어서 넣어준다.
 			filtered = filter(filtered, guard);
 		}
 		
@@ -192,13 +193,15 @@ public class SimpleFilter {
 			}
 			Pair<String, String> classAndMethodName = NodeUtils.getTypeDecAndMethodDec(node);
 			Type type = ProjectInfo.getVariableType(classAndMethodName.getFirst(), classAndMethodName.getSecond(), name);
+			//class 이름과 method 이름, node의 fullyqualified 이름을 가지고 Type을 생성
 			Variable variable = new Variable(null, name, type);
+			//node의 fullyqualified name과 type으로 Variable 객체를 생성하는데 얘는 뉴사도 메트릭을 위한 애임
 			boolean match = false;
 			if(_variables.contains(variable) || _methods.contains(name) || sameStructure(node)){
 				match = true;
 			} else {
 				ASTNode parent = node.getParent();
-				while(parent != null && !(parent instanceof Statement)){
+				while(parent != null && !(parent instanceof Statement)){ // parent가 statement가 되면 탈출
 					if(parent instanceof MethodInvocation){
 						if(_methods.contains(((MethodInvocation) parent).getName().getFullyQualifiedName())){
 							match = true;
@@ -211,7 +214,7 @@ public class SimpleFilter {
 			if(match){
 				ASTNode parent = node.getParent();
 				Statement statement = null;
-				while(parent != null && !(parent instanceof MethodDeclaration)){
+				while(parent != null && !(parent instanceof MethodDeclaration)){ // 메소드 선언 단위의 parent까지 타고 올라간다
 					parent = parent.getParent();
 					if(statement == null && parent instanceof Statement){
 						statement = (Statement) parent;
